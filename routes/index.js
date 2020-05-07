@@ -1,19 +1,15 @@
+const defaultPic = require('./defaultPic');
+const rule = require('./rule');
 var cors = require('cors');
 var app = require("express")();
 var http = require("http").Server(app);
 var io = require("socket.io")(http);
+
 app.use(cors());
 
 let info = new Object();
 let playerList = new Array();
 let chatList = new Array();
-
-//0炸彈 1勝利卡 2一般卡
-const boomCard = 0;
-const victoryCard = 1;
-const commonCard = 2;
-const coverCard = 3;
-
 
 function response(code, msg, obj) {
   this.code = code;
@@ -25,7 +21,7 @@ app.get("/", function (req, res) {
   info = new Object();
   playerList = new Array();
   chatList = new Array();
-  res.send("<h1>你好web秀</h1>");
+  res.send("<h1>刷刷刷</h1>");
 });
 
 let token = 0;
@@ -33,11 +29,11 @@ app.get("/getToken", function (req, res) {
   res.send(new response(200, "init", token++));
 });
 
-
 io.on("connection", function (socket) {
   console.log("someone connected !");
 
-  socket.on("queue", (name, token) => {
+  socket.on("queue", (name, token, pic) => {
+
     //檢查
     let errorMsg = "";
     let names = playerList.map(function (item) {
@@ -59,6 +55,11 @@ io.on("connection", function (socket) {
       let player = new Object();
       player.name = name;
       player.token = token;
+      if(pic){
+        player.photo = pic.toString('base64')
+      }else{
+        player.photo = defaultPic
+      }
       playerList.push(player);
       io.emit("inProcession", new response(200, "queue", playerList));
     }
@@ -81,10 +82,9 @@ io.on("connection", function (socket) {
 
     playerList.forEach(function (item, index, array) {
       item.id = index + 1;
-      item.photo = "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==";
       item.character = characters.shift();
       let desk = cards.shift();
-      item.cards = desk.map((card) => coverCard);
+      item.cards = desk.map((card) => rule.coverCard);
       info.result.push(desk);
     });
 
@@ -105,13 +105,13 @@ io.on("connection", function (socket) {
     let result = info.result[player - 1][card];
     info.playerList[player - 1].cards[card] = result;
 
-    if (result === boomCard) {
+    if (result === rule.boomCard) {
       info.end = 0
       io.emit("inProcession", new response(200, "selectCard", info))
       io.emit("inProcession", new response(200, "lock", true));
       return
     }
-    if (result === victoryCard) {
+    if (result === rule.victoryCard) {
       info.victory--
       if (info.vitory === 0 ) { 
         info.end = 1
@@ -132,7 +132,7 @@ io.on("connection", function (socket) {
       info.result=[];
       playerList.forEach(function (item) {
         let desk = cards.shift();
-        item.cards = desk.map((card) => coverCard);
+        item.cards = desk.map((card) => rule.coverCard);
         info.result.push(desk);
       });
       info.playerList = playerList
@@ -168,8 +168,6 @@ function washPlayer(playerList) {
   return newPlayerList;
 }
 function wahsCharacter(){
-  const badChar = 0
-  const goodChar = 1
   let good = 0
   let bad = 0
   let washBefore = [];
@@ -192,10 +190,10 @@ function wahsCharacter(){
       　break;
   }
   for (i = 0; i < bad; i++) {
-      washBefore.push(badChar);
+      washBefore.push(rule.badChar);
   }
   for (i = 0; i < good; i++) {
-      washBefore.push(goodChar);
+      washBefore.push(rule.goodChar);
   }
   for (i = 0; i < info.people; i++) {
     random = Math.floor(Math.random() * washBefore.length);
@@ -210,12 +208,12 @@ function washCard() {
   let washBefore = [];
   let washAfter = [];
 
-  washBefore.push(boomCard);
+  washBefore.push(rule.boomCard);
   for (i = 0; i < info.victory; i++) {
-    washBefore.push(victoryCard);
+    washBefore.push(rule.victoryCard);
   }
   for (i = 0; i < total - info.victory - 1; i++) {
-    washBefore.push(commonCard);
+    washBefore.push(rule.commonCard);
   }
   let arr = [];
   for (i = 0; i < total; i++) {
